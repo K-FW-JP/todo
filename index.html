@@ -407,6 +407,10 @@
     white-space: pre-wrap;
     margin: 0;
   }
+  .done-text {
+    text-decoration: line-through;
+    color: var(--ink-soft);
+  }
   .memo-meta {
     display: flex;
     justify-content: space-between;
@@ -526,6 +530,9 @@
 
   <div class="filter-row" id="categoryFilterRow"></div>
   <div class="filter-row" id="filterRow"></div>
+  <div class="filter-row">
+    <span class="filter-chip" id="showCompletedToggle">完了済みを表示</span>
+  </div>
 
   <div id="memoList"></div>
   <div class="empty" id="emptyState" style="display:none;">まだメモがありません。最初の投稿をどうぞ。</div>
@@ -545,6 +552,7 @@ let tagEditMode = false;
 let activeFilterTag = null;
 let activeFilterCategory = null;
 let searchQuery = '';
+let showCompleted = false;
 let roomId = null;
 
 function showStatus(msg) {
@@ -981,7 +989,14 @@ function renderMemoList() {
   const emptyEl = document.getElementById('emptyState');
   listEl.innerHTML = '';
 
-  let memos = [...data.memos].filter(m => !m.done).sort((a,b) => b.updatedAt - a.updatedAt);
+  let memos = [...data.memos];
+  if (!showCompleted) {
+    memos = memos.filter(m => !m.done);
+  }
+  memos.sort((a, b) => {
+    if (!!a.done !== !!b.done) return a.done ? 1 : -1;
+    return b.updatedAt - a.updatedAt;
+  });
   if (activeFilterCategory) {
     memos = memos.filter(m => m.category === activeFilterCategory);
   }
@@ -1065,8 +1080,8 @@ function renderMemoList() {
     } else {
       div.innerHTML = `
         <div class="memo-body-row">
-          <input type="checkbox" class="done-check">
-          <p class="memo-text"></p>
+          <input type="checkbox" class="done-check" ${memo.done ? 'checked' : ''}>
+          <p class="memo-text${memo.done ? ' done-text' : ''}"></p>
         </div>
         <div class="memo-meta">
           <div class="memo-tags">${memo.category ? `<span class="memo-category">${escapeHtml(memo.category)}</span>` : ''}${memo.tags.map(t => `<span class="memo-tag">${escapeHtml(t)}</span>`).join('')}</div>
@@ -1080,13 +1095,15 @@ function renderMemoList() {
         </div>
       `;
       div.querySelector('.memo-text').textContent = memo.text;
-      div.querySelector('.done-check').onchange = async () => {
-        memo.done = true;
+      div.querySelector('.done-check').onchange = async (e) => {
+        const newDone = e.target.checked;
+        const prevDone = memo.done;
+        memo.done = newDone;
         memo.updatedAt = Date.now();
         const ok = await saveData();
-        if (!ok) { memo.done = false; render(); return; }
+        if (!ok) { memo.done = prevDone; render(); return; }
         render();
-        showStatus('完了にしました');
+        showStatus(newDone ? '完了にしました' : '未完了に戻しました');
       };
       div.querySelector('.edit').onclick = () => { memo._editing = true; render(); };
       div.querySelector('.delete').onclick = async () => {
@@ -1117,8 +1134,16 @@ function render() {
   renderTagPicker();
   renderCategoryFilterRow();
   renderFilterRow();
+  const toggle = document.getElementById('showCompletedToggle');
+  toggle.classList.toggle('active', showCompleted);
+  toggle.textContent = showCompleted ? '完了済みを非表示' : '完了済みを表示';
   renderMemoList();
 }
+
+document.getElementById('showCompletedToggle').onclick = () => {
+  showCompleted = !showCompleted;
+  render();
+};
 
 document.getElementById('postBtn').onclick = async () => {
   const input = document.getElementById('memoInput');
