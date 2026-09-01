@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>To Do リスト</title>
+<style>
+  :root {
+    --paper: #F6F4EF;
+    --paper-raised: #FFFFFF;
+    --ink: #23262B;
+    --ink-soft: #5B6069;
+    --line: #DEDAD0;
+    --accent: #3A5A78;
+    --accent-soft: #E7EEF3;
+    --category: #96602A;
+    --category-soft: #F1E6D8;
+    --danger: #A6443A;
+    --radius: 3px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--ink);
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+  .count {
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .room-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: -14px 0 20px;
+  }
+  .room-status span {
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  /* 部屋番号入力ゲート */
+  .room-gate {
+    position: fixed;
+    inset: 0;
+    background: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+  }
+  .room-gate-box {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+  }
+  .room-gate-box h2 {
+    font-size: 17px;
+    margin: 0 0 8px;
+  }
+  .room-gate-box p {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin: 0 0 16px;
+  }
+  .room-gate-box input {
+    width: 100%;
+    font-size: 15px;
+    font-family: inherit;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .room-gate-box input:focus { border-color: var(--accent); }
+  .room-gate-box .btn-primary {
+    width: 100%;
+    padding: 10px;
+  }
+  .room-gate-note {
+    color: var(--danger) !important;
+    margin: 10px 0 0 !important;
+  }
+
+  /* 投稿フォーム */
+  .composer {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 28px;
+  }
+  .composer textarea {
+    width: 100%;
+    border: none;
+    resize: vertical;
+    min-height: 64px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--ink);
+    outline: none;
+    line-height: 1.6;
+  }
+  .composer textarea::placeholder { color: #A8ADB5; }
+
+  .tag-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .tag-chip {
+    font-size: 12.5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink-soft);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .tag-chip:hover { border-color: var(--accent); }
+  .tag-chip.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .tag-add {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .tag-add input {
+    font-size: 12.5px;
+    padding: 4px 8px;
+    border: 1px dashed var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink);
+    width: 96px;
+    outline: none;
+  }
+  .tag-add input:focus { border-color: var(--accent); }
+  .tag-add button {
+    font-size: 12.5px;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 2px;
+  }
+
+  /* カテゴリ */
+  .category-row-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+  .category-row-label span {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  .cat-edit-toggle {
+    font-size: 11.5px;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+  .category-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 12px;
+  }
+  .category-chip {
+    font-size: 12.5px;
+    padding: 4px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink-soft);
+    cursor: pointer;
+    user-select: none;
+  }
+  .category-chip:hover { border-color: var(--category); }
+  .category-chip.selected {
+    background: var(--category);
+    border-color: var(--category);
+    color: #fff;
+  }
+  .category-manage-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 3px 4px 3px 8px;
+  }
+  .category-manage-row input {
+    border: none;
+    background: transparent;
+    font-size: 12.5px;
+    font-family: inherit;
+    color: var(--ink);
+    width: 84px;
+    outline: none;
+  }
+  .category-manage-row button {
+    border: none;
+    background: none;
+    color: var(--danger);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 5px;
+  }
+  .move-btn {
+    color: var(--ink-soft) !important;
+    font-size: 11px !important;
+  }
+  .move-btn:disabled {
+    opacity: 0.25;
+    cursor: default;
+  }
+  .tag-manage-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px 4px 3px 10px;
+  }
+  .tag-manage-row input {
+    border: none;
+    background: transparent;
+    font-size: 12.5px;
+    font-family: inherit;
+    color: var(--ink);
+    width: 76px;
+    outline: none;
+  }
+  .tag-manage-row button {
+    border: none;
+    background: none;
+    color: var(--danger);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 5px;
+  }
+  .category-add-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .category-add-row input {
+    font-size: 12.5px;
+    padding: 4px 8px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink);
+    width: 100px;
+    outline: none;
+  }
+  .category-add-row button {
+    font-size: 12.5px;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .memo-category {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius);
+    background: var(--category-soft);
+    color: var(--category);
+  }
+
+  .composer-footer {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 8px 18px;
+    font-size: 13.5px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .btn-primary:disabled { opacity: 0.35; cursor: default; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent); }
+
+  /* 検索欄 */
+  .search-row {
+    margin-bottom: 14px;
+  }
+  .search-row input {
+    width: 100%;
+    font-size: 14px;
+    font-family: inherit;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper-raised);
+    color: var(--ink);
+    outline: none;
+  }
+  .search-row input:focus { border-color: var(--accent); }
+  .search-row input::placeholder { color: #A8ADB5; }
+
+  /* フィルター */
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .filter-label {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-right: 4px;
+  }
+  .filter-chip {
+    font-size: 12.5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--paper-raised);
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .filter-chip.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* メモ一覧 */
+  .memo {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .memo-body-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .done-check {
+    margin-top: 4px;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .memo-text {
+    font-size: 14.5px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    margin: 0;
+  }
+  .memo-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  .memo-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .memo-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .memo-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .memo-actions button {
+    background: none;
+    border: none;
+    font-size: 12px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+  .memo-actions button:hover { color: var(--accent); }
+  .memo-actions .delete:hover { color: var(--danger); }
+  .memo-time {
+    font-size: 11px;
+    color: #A8ADB5;
+  }
+
+  .memo textarea.edit-area {
+    width: 100%;
+    font-family: inherit;
+    font-size: 14.5px;
+    line-height: 1.7;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 8px;
+    margin-bottom: 8px;
+    outline: none;
+  }
+
+  .empty {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    padding: 40px 0;
+  }
+
+  .status {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: #fff;
+    font-size: 12.5px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .status.show { opacity: 0.92; }
+</style>
+</head>
+<body>
+<div class="room-gate" id="roomGate">
+  <div class="room-gate-box">
+    <h2>部屋番号を入力</h2>
+    <p>合言葉のようなものです。前回と同じ番号を入れると、続きが表示されます。</p>
+    <input type="text" id="roomInput" placeholder="例: 101" maxlength="40" autocomplete="off">
+    <button id="roomEnterBtn" class="btn-primary">開く</button>
+    <p class="room-gate-note" id="roomGateNote"></p>
+  </div>
+</div>
+
+<div class="wrap" id="wrap" style="display:none;">
+
+  <header>
+    <h1>To Do リスト</h1>
+    <span class="count" id="countLabel">読み込み中…</span>
+  </header>
+  <div class="room-status">
+    <span id="roomStatusLabel"></span>
+    <button id="roomSwitchBtn" class="cat-edit-toggle">部屋番号を変更</button>
+  </div>
+
+  <div class="composer">
+    <textarea id="memoInput" placeholder="やることを書く…"></textarea>
+    <div class="category-row-label">
+      <span>カテゴリ</span>
+      <button class="cat-edit-toggle" id="catEditToggle">編集</button>
+    </div>
+    <div class="category-picker" id="categoryPicker"></div>
+    <div class="category-row-label">
+      <span>タグ</span>
+      <button class="cat-edit-toggle" id="tagEditToggle">編集</button>
+    </div>
+    <div class="tag-picker" id="tagPicker"></div>
+    <div class="composer-footer">
+      <button class="btn-primary" id="postBtn">追加</button>
+    </div>
+  </div>
+
+  <div class="search-row">
+    <input type="text" id="searchInput" placeholder="ToDoの内容を検索…">
+  </div>
+
+  <div class="filter-row" id="categoryFilterRow"></div>
+  <div class="filter-row" id="filterRow"></div>
+
+  <div id="memoList"></div>
+  <div class="empty" id="emptyState" style="display:none;">まだメモがありません。最初の投稿をどうぞ。</div>
+</div>
+
+<div class="status" id="statusBar"></div>
+
+<script>
+const API_BASE = 'https://todo-hyo-api.kishikakouhinseizou.workers.dev/data';
+const ROOM_STORAGE_KEY = 'todo-app-room-id'; // このブラウザで最後に使った部屋番号を覚えておくためのlocalStorageキー
+const DEFAULT_CATEGORIES = ['玉張', '仕込', '星掛', '打上(夜)', '打上(昼)', 'メモ'];
+let data = { memos: [], tags: [], categories: [...DEFAULT_CATEGORIES] };
+let selectedTagsForPost = new Set();
+let selectedCategoryForPost = null;
+let categoryEditMode = false;
+let tagEditMode = false;
+let activeFilterTag = null;
+let activeFilterCategory = null;
+let searchQuery = '';
+let roomId = null;
+
+function showStatus(msg) {
+  const bar = document.getElementById('statusBar');
+  bar.textContent = msg;
+  bar.classList.add('show');
+  setTimeout(() => bar.classList.remove('show'), 1800);
+}
+
+function apiUrl() {
+  return `${API_BASE}?room=${encodeURIComponent(roomId)}`;
+}
+
+async function loadData() {
+  try {
+    const res = await fetch(apiUrl());
+    if (!res.ok) throw new Error('load failed: ' + res.status);
+    const parsed = await res.json();
+    data.tags = parsed.tags || [];
+    data.memos = parsed.memos || [];
+    data.categories = (parsed.categories && parsed.categories.length > 0) ? parsed.categories : [...DEFAULT_CATEGORIES];
+  } catch (e) {
+    console.warn('[todo-app] データの読み込みに失敗しました:', e);
+    showStatus('データを読み込めませんでした');
+    data = { memos: [], tags: [], categories: [...DEFAULT_CATEGORIES] };
+  }
+  render();
+}
+
+// 保存対象からは編集中だけの一時的なプロパティ(_editing等)を除いて送る。
+// 保存に成功すれば true、失敗すれば false を返す。
+async function saveData() {
+  const payload = {
+    categories: data.categories,
+    tags: data.tags,
+    memos: data.memos.map(m => ({
+      id: m.id,
+      text: m.text,
+      category: m.category,
+      tags: m.tags,
+      done: !!m.done,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt
+    }))
+  };
+  try {
+    const res = await fetch(apiUrl(), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      showStatus('保存できませんでした。変更を取り消します。');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('[todo-app] 保存に失敗しました(保存は取り消されます):', e);
+    showStatus('保存できませんでした。変更を取り消します。');
+    return false;
+  }
+}
+
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+/* ------------------------- タグ(選択用の一般部品) ------------------------- */
+
+function renderTagPickerGeneric(container, selectedSet, onChange) {
+  container.innerHTML = '';
+  data.tags.forEach(tag => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip' + (selectedSet.has(tag) ? ' selected' : '');
+    chip.textContent = tag;
+    chip.onclick = () => {
+      if (selectedSet.has(tag)) selectedSet.delete(tag);
+      else selectedSet.add(tag);
+      onChange();
+    };
+    container.appendChild(chip);
+  });
+  const addWrap = document.createElement('span');
+  addWrap.className = 'tag-add';
+  const input = document.createElement('input');
+  input.placeholder = '新しいタグ';
+  input.maxLength = 20;
+  const btn = document.createElement('button');
+  btn.textContent = '追加';
+  addWrap.appendChild(input);
+  addWrap.appendChild(btn);
+  container.appendChild(addWrap);
+
+  const commit = async () => {
+    const val = input.value.trim();
+    if (!val || data.tags.includes(val)) return;
+    data.tags.push(val);
+    const ok = await saveData();
+    if (!ok) { data.tags.pop(); onChange(); return; }
+    selectedSet.add(val);
+    onChange();
+  };
+  btn.onclick = commit;
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+  });
+}
+
+/* ------------------------------- カテゴリ ------------------------------- */
+
+function renderCategoryChipsGeneric(container, selectedValue, onSelect) {
+  container.innerHTML = '';
+  data.categories.forEach(cat => {
+    const chip = document.createElement('span');
+    chip.className = 'category-chip' + (selectedValue === cat ? ' selected' : '');
+    chip.textContent = cat;
+    chip.onclick = () => onSelect(selectedValue === cat ? null : cat);
+    container.appendChild(chip);
+  });
+}
+
+function renderCategoryPicker() {
+  const el = document.getElementById('categoryPicker');
+  const toggleBtn = document.getElementById('catEditToggle');
+  toggleBtn.textContent = categoryEditMode ? '完了' : '編集';
+  el.innerHTML = '';
+
+  if (!categoryEditMode) {
+    renderCategoryChipsGeneric(el, selectedCategoryForPost, (val) => {
+      selectedCategoryForPost = val;
+      renderCategoryPicker();
+    });
+    return;
+  }
+
+  data.categories.forEach((cat, idx) => {
+    const row = document.createElement('span');
+    row.className = 'category-manage-row';
+    const upBtn = document.createElement('button');
+    upBtn.textContent = '↑';
+    upBtn.className = 'move-btn';
+    upBtn.disabled = idx === 0;
+    const downBtn = document.createElement('button');
+    downBtn.textContent = '↓';
+    downBtn.className = 'move-btn';
+    downBtn.disabled = idx === data.categories.length - 1;
+    const input = document.createElement('input');
+    input.value = cat;
+    const del = document.createElement('button');
+    del.textContent = '×';
+    row.appendChild(upBtn);
+    row.appendChild(downBtn);
+    row.appendChild(input);
+    row.appendChild(del);
+    el.appendChild(row);
+
+    upBtn.onclick = async () => {
+      if (idx === 0) return;
+      [data.categories[idx - 1], data.categories[idx]] = [data.categories[idx], data.categories[idx - 1]];
+      const ok = await saveData();
+      if (!ok) {
+        [data.categories[idx - 1], data.categories[idx]] = [data.categories[idx], data.categories[idx - 1]];
+      }
+      renderCategoryPicker();
+    };
+    downBtn.onclick = async () => {
+      if (idx === data.categories.length - 1) return;
+      [data.categories[idx + 1], data.categories[idx]] = [data.categories[idx], data.categories[idx + 1]];
+      const ok = await saveData();
+      if (!ok) {
+        [data.categories[idx + 1], data.categories[idx]] = [data.categories[idx], data.categories[idx + 1]];
+      }
+      renderCategoryPicker();
+    };
+
+    const commitRename = async () => {
+      const newVal = input.value.trim();
+      if (!newVal || newVal === cat) { input.value = cat; return; }
+      if (data.categories.includes(newVal)) { showStatus('同じ名前のカテゴリがあります'); input.value = cat; return; }
+
+      const affectedIds = data.memos.filter(m => m.category === cat).map(m => m.id);
+      const prevFilterCategory = activeFilterCategory;
+      const prevSelectedForPost = selectedCategoryForPost;
+
+      data.categories[idx] = newVal;
+      data.memos.forEach(m => { if (m.category === cat) m.category = newVal; });
+      if (activeFilterCategory === cat) activeFilterCategory = newVal;
+      if (selectedCategoryForPost === cat) selectedCategoryForPost = newVal;
+
+      const ok = await saveData();
+      if (!ok) {
+        data.categories[idx] = cat;
+        affectedIds.forEach(id => { const m = data.memos.find(x => x.id === id); if (m) m.category = cat; });
+        activeFilterCategory = prevFilterCategory;
+        selectedCategoryForPost = prevSelectedForPost;
+        input.value = cat;
+      }
+      render();
+    };
+    input.addEventListener('blur', commitRename);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+
+    del.onclick = async () => {
+      const prevCategories = [...data.categories];
+      const affectedIds = data.memos.filter(m => m.category === cat).map(m => m.id);
+      const prevFilterCategory = activeFilterCategory;
+      const prevSelectedForPost = selectedCategoryForPost;
+
+      data.categories = data.categories.filter(c => c !== cat);
+      data.memos.forEach(m => { if (m.category === cat) m.category = null; });
+      if (activeFilterCategory === cat) activeFilterCategory = null;
+      if (selectedCategoryForPost === cat) selectedCategoryForPost = null;
+
+      const ok = await saveData();
+      if (!ok) {
+        data.categories = prevCategories;
+        affectedIds.forEach(id => { const m = data.memos.find(x => x.id === id); if (m) m.category = cat; });
+        activeFilterCategory = prevFilterCategory;
+        selectedCategoryForPost = prevSelectedForPost;
+      }
+      render();
+    };
+  });
+
+  const addRow = document.createElement('span');
+  addRow.className = 'category-add-row';
+  const addInput = document.createElement('input');
+  addInput.placeholder = '新しいカテゴリ';
+  addInput.maxLength = 20;
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '追加';
+  addRow.appendChild(addInput);
+  addRow.appendChild(addBtn);
+  el.appendChild(addRow);
+
+  const commitAdd = async () => {
+    const val = addInput.value.trim();
+    if (!val) return;
+    if (data.categories.includes(val)) { showStatus('同じ名前のカテゴリがあります'); return; }
+    data.categories.push(val);
+    const ok = await saveData();
+    if (!ok) { data.categories.pop(); renderCategoryPicker(); return; }
+    addInput.value = '';
+    renderCategoryPicker();
+  };
+  addBtn.onclick = commitAdd;
+  addInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commitAdd(); } });
+}
+
+document.getElementById('catEditToggle').onclick = () => {
+  categoryEditMode = !categoryEditMode;
+  renderCategoryPicker();
+};
+
+function renderCategoryFilterRow() {
+  const el = document.getElementById('categoryFilterRow');
+  el.innerHTML = '<span class="filter-label">カテゴリ:</span>';
+  const allChip = document.createElement('span');
+  allChip.className = 'filter-chip' + (activeFilterCategory === null ? ' active' : '');
+  allChip.textContent = 'すべて';
+  allChip.onclick = () => { activeFilterCategory = null; render(); };
+  el.appendChild(allChip);
+
+  data.categories.forEach(cat => {
+    const chip = document.createElement('span');
+    chip.className = 'filter-chip' + (activeFilterCategory === cat ? ' active' : '');
+    chip.textContent = cat;
+    chip.onclick = () => { activeFilterCategory = (activeFilterCategory === cat ? null : cat); render(); };
+    el.appendChild(chip);
+  });
+}
+
+/* --------------------------------- タグ管理 --------------------------------- */
+
+function renderTagPicker() {
+  const el = document.getElementById('tagPicker');
+  const toggleBtn = document.getElementById('tagEditToggle');
+  toggleBtn.textContent = tagEditMode ? '完了' : '編集';
+
+  if (!tagEditMode) {
+    renderTagPickerGeneric(el, selectedTagsForPost, () => { renderTagPicker(); renderFilterRow(); });
+    return;
+  }
+
+  el.innerHTML = '';
+  data.tags.forEach((tag, idx) => {
+    const row = document.createElement('span');
+    row.className = 'tag-manage-row';
+    const upBtn = document.createElement('button');
+    upBtn.textContent = '↑';
+    upBtn.className = 'move-btn';
+    upBtn.disabled = idx === 0;
+    const downBtn = document.createElement('button');
+    downBtn.textContent = '↓';
+    downBtn.className = 'move-btn';
+    downBtn.disabled = idx === data.tags.length - 1;
+    const input = document.createElement('input');
+    input.value = tag;
+    const del = document.createElement('button');
+    del.textContent = '×';
+    row.appendChild(upBtn);
+    row.appendChild(downBtn);
+    row.appendChild(input);
+    row.appendChild(del);
+    el.appendChild(row);
+
+    upBtn.onclick = async () => {
+      if (idx === 0) return;
+      [data.tags[idx - 1], data.tags[idx]] = [data.tags[idx], data.tags[idx - 1]];
+      const ok = await saveData();
+      if (!ok) {
+        [data.tags[idx - 1], data.tags[idx]] = [data.tags[idx], data.tags[idx - 1]];
+      }
+      renderTagPicker();
+    };
+    downBtn.onclick = async () => {
+      if (idx === data.tags.length - 1) return;
+      [data.tags[idx + 1], data.tags[idx]] = [data.tags[idx], data.tags[idx + 1]];
+      const ok = await saveData();
+      if (!ok) {
+        [data.tags[idx + 1], data.tags[idx]] = [data.tags[idx], data.tags[idx + 1]];
+      }
+      renderTagPicker();
+    };
+
+    const commitRename = async () => {
+      const newVal = input.value.trim();
+      if (!newVal || newVal === tag) { input.value = tag; return; }
+      if (data.tags.includes(newVal)) { showStatus('同じ名前のタグがあります'); input.value = tag; return; }
+
+      const affectedIds = data.memos.filter(m => m.tags.includes(tag)).map(m => m.id);
+      const prevFilterTag = activeFilterTag;
+      const hadSelected = selectedTagsForPost.has(tag);
+
+      data.tags[idx] = newVal;
+      data.memos.forEach(m => { m.tags = m.tags.map(t => t === tag ? newVal : t); });
+      if (activeFilterTag === tag) activeFilterTag = newVal;
+      if (hadSelected) { selectedTagsForPost.delete(tag); selectedTagsForPost.add(newVal); }
+
+      const ok = await saveData();
+      if (!ok) {
+        data.tags[idx] = tag;
+        affectedIds.forEach(id => {
+          const m = data.memos.find(x => x.id === id);
+          if (m) m.tags = m.tags.map(t => t === newVal ? tag : t);
+        });
+        activeFilterTag = prevFilterTag;
+        if (hadSelected) { selectedTagsForPost.delete(newVal); selectedTagsForPost.add(tag); }
+        input.value = tag;
+      }
+      render();
+    };
+    input.addEventListener('blur', commitRename);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+
+    del.onclick = async () => {
+      const prevTags = [...data.tags];
+      const affectedIds = data.memos.filter(m => m.tags.includes(tag)).map(m => m.id);
+      const prevFilterTag = activeFilterTag;
+      const hadSelected = selectedTagsForPost.has(tag);
+
+      data.tags = data.tags.filter(t => t !== tag);
+      data.memos.forEach(m => { m.tags = m.tags.filter(t => t !== tag); });
+      if (activeFilterTag === tag) activeFilterTag = null;
+      selectedTagsForPost.delete(tag);
+
+      const ok = await saveData();
+      if (!ok) {
+        data.tags = prevTags;
+        affectedIds.forEach(id => {
+          const m = data.memos.find(x => x.id === id);
+          if (m && !m.tags.includes(tag)) m.tags.push(tag);
+        });
+        activeFilterTag = prevFilterTag;
+        if (hadSelected) selectedTagsForPost.add(tag);
+      }
+      render();
+    };
+  });
+
+  const addRow = document.createElement('span');
+  addRow.className = 'category-add-row';
+  const addInput = document.createElement('input');
+  addInput.placeholder = '新しいタグ';
+  addInput.maxLength = 20;
+  const addBtn = document.createElement('button');
+  addBtn.textContent = '追加';
+  addRow.appendChild(addInput);
+  addRow.appendChild(addBtn);
+  el.appendChild(addRow);
+
+  const commitAdd = async () => {
+    const val = addInput.value.trim();
+    if (!val) return;
+    if (data.tags.includes(val)) { showStatus('同じ名前のタグがあります'); return; }
+    data.tags.push(val);
+    const ok = await saveData();
+    if (!ok) { data.tags.pop(); renderTagPicker(); return; }
+    addInput.value = '';
+    renderTagPicker();
+  };
+  addBtn.onclick = commitAdd;
+  addInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commitAdd(); } });
+}
+
+document.getElementById('tagEditToggle').onclick = () => {
+  tagEditMode = !tagEditMode;
+  renderTagPicker();
+};
+
+function renderFilterRow() {
+  const el = document.getElementById('filterRow');
+  el.innerHTML = '<span class="filter-label">タグで絞り込み:</span>';
+  const allChip = document.createElement('span');
+  allChip.className = 'filter-chip' + (activeFilterTag === null ? ' active' : '');
+  allChip.textContent = 'すべて';
+  allChip.onclick = () => { activeFilterTag = null; render(); };
+  el.appendChild(allChip);
+
+  data.tags.forEach(tag => {
+    const chip = document.createElement('span');
+    chip.className = 'filter-chip' + (activeFilterTag === tag ? ' active' : '');
+    chip.textContent = tag;
+    chip.onclick = () => { activeFilterTag = (activeFilterTag === tag ? null : tag); render(); };
+    el.appendChild(chip);
+  });
+}
+
+/* --------------------------------- メモ一覧 --------------------------------- */
+
+function renderMemoList() {
+  const listEl = document.getElementById('memoList');
+  const emptyEl = document.getElementById('emptyState');
+  listEl.innerHTML = '';
+
+  let memos = [...data.memos].filter(m => !m.done).sort((a,b) => b.updatedAt - a.updatedAt);
+  if (activeFilterCategory) {
+    memos = memos.filter(m => m.category === activeFilterCategory);
+  }
+  if (activeFilterTag) {
+    memos = memos.filter(m => m.tags.includes(activeFilterTag));
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    memos = memos.filter(m => m.text.toLowerCase().includes(q));
+  }
+
+  const remainingCount = data.memos.filter(m => !m.done).length;
+  document.getElementById('countLabel').textContent = `残り${remainingCount}件`;
+
+  if (memos.length === 0) {
+    emptyEl.textContent = (searchQuery || activeFilterTag || activeFilterCategory) ? '該当するToDoが見つかりません。' : 'やることはありません。';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  memos.forEach(memo => {
+    const div = document.createElement('div');
+    div.className = 'memo';
+
+    if (memo._editing) {
+      if (!memo._editTags) memo._editTags = new Set(memo.tags);
+      if (memo._editCategory === undefined) memo._editCategory = memo.category || null;
+      div.innerHTML = `
+        <textarea class="edit-area" rows="3">${escapeHtml(memo.text)}</textarea>
+        <div class="category-picker edit-category-picker"></div>
+        <div class="tag-picker edit-tag-picker"></div>
+        <div class="memo-meta">
+          <div></div>
+          <div class="memo-actions">
+            <button class="save">保存</button>
+            <button class="cancel">キャンセル</button>
+          </div>
+        </div>
+      `;
+      const rerenderEditCategory = () => {
+        renderCategoryChipsGeneric(div.querySelector('.edit-category-picker'), memo._editCategory, (val) => {
+          memo._editCategory = val;
+          rerenderEditCategory();
+        });
+      };
+      rerenderEditCategory();
+      const rerenderEditTags = () => {
+        renderTagPickerGeneric(div.querySelector('.edit-tag-picker'), memo._editTags, rerenderEditTags);
+      };
+      rerenderEditTags();
+
+      div.querySelector('.save').onclick = async () => {
+        const newText = div.querySelector('.edit-area').value.trim();
+        if (!newText) { showStatus('本文を入力してください'); return; }
+
+        const prevText = memo.text;
+        const prevTags = memo.tags;
+        const prevCategory = memo.category;
+
+        memo.text = newText;
+        memo.tags = [...memo._editTags];
+        memo.category = memo._editCategory;
+        memo.updatedAt = Date.now();
+
+        const ok = await saveData();
+        if (!ok) {
+          memo.text = prevText;
+          memo.tags = prevTags;
+          memo.category = prevCategory;
+          render();
+          return;
+        }
+        delete memo._editing;
+        delete memo._editTags;
+        delete memo._editCategory;
+        render();
+        showStatus('更新しました');
+      };
+      div.querySelector('.cancel').onclick = () => { delete memo._editing; delete memo._editTags; delete memo._editCategory; render(); };
+    } else {
+      div.innerHTML = `
+        <div class="memo-body-row">
+          <input type="checkbox" class="done-check">
+          <p class="memo-text"></p>
+        </div>
+        <div class="memo-meta">
+          <div class="memo-tags">${memo.category ? `<span class="memo-category">${escapeHtml(memo.category)}</span>` : ''}${memo.tags.map(t => `<span class="memo-tag">${escapeHtml(t)}</span>`).join('')}</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="memo-time">${fmtTime(memo.updatedAt)}</span>
+            <div class="memo-actions">
+              <button class="edit">編集</button>
+              <button class="delete">削除</button>
+            </div>
+          </div>
+        </div>
+      `;
+      div.querySelector('.memo-text').textContent = memo.text;
+      div.querySelector('.done-check').onchange = async () => {
+        memo.done = true;
+        memo.updatedAt = Date.now();
+        const ok = await saveData();
+        if (!ok) { memo.done = false; render(); return; }
+        render();
+        showStatus('完了にしました');
+      };
+      div.querySelector('.edit').onclick = () => { memo._editing = true; render(); };
+      div.querySelector('.delete').onclick = async () => {
+        const prevMemos = data.memos;
+        data.memos = data.memos.filter(m => m.id !== memo.id);
+        const ok = await saveData();
+        if (!ok) {
+          data.memos = prevMemos;
+          render();
+          return;
+        }
+        render();
+        showStatus('削除しました');
+      };
+    }
+    listEl.appendChild(div);
+  });
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function render() {
+  renderCategoryPicker();
+  renderTagPicker();
+  renderCategoryFilterRow();
+  renderFilterRow();
+  renderMemoList();
+}
+
+document.getElementById('postBtn').onclick = async () => {
+  const input = document.getElementById('memoInput');
+  const text = input.value.trim();
+  if (!text) { showStatus('本文を入力してください'); return; }
+  const now = Date.now();
+  const newMemo = {
+    id: 'm_' + now + '_' + Math.random().toString(36).slice(2,7),
+    text,
+    category: selectedCategoryForPost,
+    tags: [...selectedTagsForPost],
+    done: false,
+    createdAt: now,
+    updatedAt: now
+  };
+  data.memos.push(newMemo);
+  const ok = await saveData();
+  if (!ok) {
+    data.memos = data.memos.filter(m => m.id !== newMemo.id);
+    render();
+    return;
+  }
+  input.value = '';
+  selectedTagsForPost = new Set();
+  selectedCategoryForPost = null;
+  render();
+  showStatus('追加しました');
+};
+
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  searchQuery = e.target.value.trim();
+  renderMemoList();
+});
+
+/* --------------------------------- 部屋番号ゲート --------------------------------- */
+
+function enterRoom(id) {
+  roomId = id;
+  localStorage.setItem(ROOM_STORAGE_KEY, id);
+  document.getElementById('roomGate').style.display = 'none';
+  document.getElementById('wrap').style.display = 'block';
+  document.getElementById('roomStatusLabel').textContent = `部屋番号: ${id}`;
+  loadData();
+}
+
+function showRoomGate(prefill, note) {
+  document.getElementById('wrap').style.display = 'none';
+  document.getElementById('roomGate').style.display = 'flex';
+  const input = document.getElementById('roomInput');
+  input.value = prefill || '';
+  document.getElementById('roomGateNote').textContent = note || '';
+  input.focus();
+}
+
+document.getElementById('roomEnterBtn').onclick = () => {
+  const val = document.getElementById('roomInput').value.trim();
+  if (!val) {
+    document.getElementById('roomGateNote').textContent = '部屋番号を入力してください';
+    return;
+  }
+  enterRoom(val);
+};
+document.getElementById('roomInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('roomEnterBtn').click(); }
+});
+document.getElementById('roomSwitchBtn').onclick = () => {
+  showRoomGate(roomId, '');
+};
+
+const savedRoom = localStorage.getItem(ROOM_STORAGE_KEY);
+if (savedRoom) {
+  enterRoom(savedRoom);
+} else {
+  showRoomGate('', '');
+}
+</script>
+</body>
+</html>
